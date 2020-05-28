@@ -1,0 +1,127 @@
+Your company has recently decided to use Docker to run containers in production. They have built some Docker images to run their own proprietary software and need a place to store and manage these images. You have been asked to build a secure, private Docker registry for use by the company. In order to verify that everything works, you have also been asked to configure a Docker workstation server to push to and pull from the registry.
+
+To complete this lab, ensure that the following requirements are met for the registry:
+
+1. A private Docker registry is running on the Docker registry server using version 2 of the registry image.
+2. The container name for the registry should be registry.
+3. The registry should always automatically restart if it stops or the Docker daemon or server restarts.
+4. The registry should require authentication. Set up an initial account with the username docker and the password d0ck3rrU73z.
+5. The registry should use TLS with a self-signed certificate.
+6. The registry should listen on port 443.
+
+
+Set up the Docker workstation server to meet the following requirements:
+
+1. Docker is logged in to the private registry.
+2. Docker is configured to accept the self-signed cert. Do not turn off certificate verification using the insecure-registries setting.
+3. To confirm that everything is working, push a test image called ip-10-0-1-101:443/test-image:1 to the private registry. You can pull any image from Docker hub and tag it with ip-10-0-1-101:443/test-image:1 as a test.
+4. Delete the test image locally and pull it from the registry.
+
+[NOTE: Write the series of commands to achieve above in this file below the question scenario with documentation]
+
+Good luck!
+
+
+====================
+
+docker pull registry
+
+docker run -dit -p 5000:5000 --name registry registry
+
+starts a container and configures it to always restart unless it is explicitly stopped or Docker is restarted.
+==============================================================================================================
+
+docker run -d --restart unless-stopped registry
+
+The registry should require authentication. Set up an initial account with the username docker and the password d0ck3rrU73z.
+==========================================
+
+Creaet a txt file 
+cat password.txt
+
+{
+  "ServerURL": "https://example.com"
+  "Username": "docker",
+  "Secret": "d0ck3rrU73z"
+}
+
+The password will be stored unencrypted in /root/.docker/config.json. That payload carries the server address, to identify the credential, the user name, and either a password or an identity token.
+
+docker login docker-registry.example.com:5000
+
+TLS with a self-signed certificate.
+====================================
+
+we will generate a self-signed certificate and import it in Docker hosts.
+
+Connect to Docker host: docker-01.example.com and run following command to generate a self-signed digital certificate.
+
+[root@docker-01 ~]# mkdir -p /opt/docker/containers/docker-registry/certs
+[root@docker-01 ~]# openssl req 
+> -newkey rsa:2048 \
+> -nodes -sha256 \
+> -x509 -days 365 \
+> -keyout /opt/docker/containers/docker-registry/certs/docker-registry.key \
+> -out /opt/docker/containers/docker-registry/certs/docker-registry.crt
+Generating a 2048 bit RSA private key
+........................................................................+++
+........................+++
+writing new private key to 'docker-registry.key'
+-----
+You are about to be asked to enter information that will be incorporated
+into your certificate request.
+What you are about to enter is what is called a Distinguished Name or a DN.
+There are quite a few fields but you can leave some blank
+For some fields there will be a default value,
+If you enter '.', the field will be left blank.
+-----
+Country Name (2 letter code) [XX]:PK
+State or Province Name (full name) []:XYZ
+Locality Name (eg, city) [Default City]:ABC
+Organization Name (eg, company) [Default Company Ltd]:PQRS
+Organizational Unit Name (eg, section) []:ITLAB
+Common Name (eg, your name or your server's hostname) []:docker-registry.example.com
+Email Address []:root@docker-01.example.com
+
+Docker workstation server set up:
+================================
+
+
+[root@docker-01 ~]# docker login docker-registry.example.com:5000
+Username: docker_user
+Password:
+WARNING! Your password will be stored unencrypted in /root/.docker/config.json.
+Configure a credential helper to remove this warning. See
+https://docs.docker.com/engine/reference/commandline/login/#credentials-store
+
+Login Succeeded
+
+Docker is configured to accept the self-signed cert. Do not turn off certificate verification using the insecure-registries setting.
+=================================
+
+This should allow connection to a private remote registry with the use of the self-signed certificate.
+
+$mkdir -p /etc/docker/certs.d/ip_address:5000
+$cp docker_reg_certs/domain.crt /etc/docker/certs.d/ip_address:5000/ca.crt
+$cp docker_reg_certs/domain.crt /usr/local/share/ca-certificates/ca.crt
+$update-ca-certificates
+
+The insecure-registry option allows Docker to attempt an HTTPS connection to the registry, without any validation of the certificates presented by the registry. 
+If the registry is not accessible via HTTPS, Docker falls back to attempt the connection using HTTP.
+
+"insecure-registries" : ["insecure-registry.example.com"],
+
+To pull and push the test image:
+================================
+docker push ip-10-0-1-101:443/test-image:1
+
+docker pull ip-10-0-1-101:443/test-image:1
+
+docker tag test-image:1 dtr-example.com/library/test-image:1
+
+docker rmi test-image
+
+
+
+
+
